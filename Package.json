@@ -1,7 +1,7 @@
 {
   "name": "secret-santa-app",
   "version": "1.0.0",
-  "description": "A Secret Santa party organizer web app",
+  "description": "تطبيق ويب لتنظيم حفلات سانتا السري",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -15,7 +15,7 @@
   "devDependencies": {
     "nodemon": "^3.0.1"
   },
-  "keywords": ["secret-santa", "christmas", "party"],
+  "keywords": ["سانتا-السري", "عيد-الميلاد", "حفلة"],
   "author": "",
   "license": "MIT"
 }
