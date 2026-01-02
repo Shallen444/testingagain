@@ -166,6 +166,9 @@
     document.getElementById('partyForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
+        const partyName = document.getElementById('partyName').value.trim();
+        const budget = document.getElementById('budget').value.trim();
+        const criteria = document.getElementById('criteria').value.trim();
         const guests = document.getElementById('guests').value
             .split('\n')
             .map(g => g.trim())
@@ -176,7 +179,39 @@
             return;
         }
 
-        alert('تم إنشاء الحفلة (مثال واجهة فقط)');
+        try {
+            const response = await fetch('/api/parties', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: partyName, budget, criteria, guests })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                alert('حدث خطأ أثناء إنشاء الحفلة: ' + (data.error || 'خطأ غير معروف'));
+                return;
+            }
+
+            // عرض النتائج بالعربي
+            const guestLinksDiv = document.getElementById('guestLinks');
+            guestLinksDiv.innerHTML = '';
+            for (const [guest, link] of Object.entries(data.guestUrls)) {
+                const a = document.createElement('a');
+                a.href = link;
+                a.target = '_blank';
+                a.textContent = `رابط ${guest}`;
+                a.className = 'text-blue-700 hover:underline block';
+                guestLinksDiv.appendChild(a);
+            }
+
+            document.getElementById('partyForm').classList.add('hidden');
+            document.getElementById('result').classList.remove('hidden');
+
+        } catch (err) {
+            alert('حدث خطأ أثناء الاتصال بالخادم');
+            console.error(err);
+        }
     });
 </script>
 </body>
