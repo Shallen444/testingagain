@@ -41,28 +41,28 @@ async function loadData() {
     try {
       partiesObj = JSON.parse(partiesData);
     } catch (e) {
-      console.error('Corrupted parties.json, starting fresh');
+      console.error('ملف parties.json تالف، سيتم البدء من جديد');
     }
     
     try {
       assignmentsObj = JSON.parse(assignmentsData);
     } catch (e) {
-      console.error('Corrupted assignments.json, starting fresh');
+      console.error('ملف assignments.json تالف، سيتم البدء من جديد');
     }
     
     try {
       guestLinksObj = JSON.parse(guestLinksData);
     } catch (e) {
-      console.error('Corrupted guest_links.json, starting fresh');
+      console.error('ملف guest_links.json تالف، سيتم البدء من جديد');
     }
     
     Object.entries(partiesObj).forEach(([key, value]) => parties.set(key, value));
     Object.entries(assignmentsObj).forEach(([key, value]) => assignments.set(key, value));
     Object.entries(guestLinksObj).forEach(([key, value]) => guestLinks.set(key, value));
     
-    console.log('Data loaded successfully');
+    console.log('تم تحميل البيانات بنجاح');
   } catch (error) {
-    console.error('Error loading data:', error);
+    console.error('حدث خطأ أثناء تحميل البيانات:', error);
   }
 }
 
@@ -70,18 +70,16 @@ async function loadData() {
 let saveInProgress = false;
 async function saveData() {
   if (saveInProgress) {
-    console.log('Save already in progress, skipping');
+    console.log('حفظ البيانات جاري بالفعل، يتم التجاوز');
     return;
   }
   
   saveInProgress = true;
   try {
-    // Create backup before overwriting
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const backupDir = path.join(DATA_DIR, 'backups');
     await fs.mkdir(backupDir, { recursive: true });
     
-    // Backup existing files if they exist
     for (const [file, filename] of [
       [PARTIES_FILE, 'parties.json'],
       [ASSIGNMENTS_FILE, 'assignments.json'],
@@ -95,7 +93,6 @@ async function saveData() {
       }
     }
     
-    // Write new data atomically
     const partiesData = JSON.stringify(Object.fromEntries(parties), null, 2);
     const assignmentsData = JSON.stringify(Object.fromEntries(assignments), null, 2);
     const guestLinksData = JSON.stringify(Object.fromEntries(guestLinks), null, 2);
@@ -106,9 +103,9 @@ async function saveData() {
       fs.writeFile(GUEST_LINKS_FILE, guestLinksData)
     ]);
     
-    console.log('Data saved successfully');
+    console.log('تم حفظ البيانات بنجاح');
   } catch (error) {
-    console.error('Error saving data:', error);
+    console.error('حدث خطأ أثناء حفظ البيانات:', error);
   } finally {
     saveInProgress = false;
   }
@@ -123,7 +120,7 @@ function sanitizeString(str, maxLength = 100) {
 function validateGuestName(name) {
   const sanitized = sanitizeString(name, 50);
   if (!sanitized || sanitized.length < 1) {
-    throw new Error('Guest name cannot be empty');
+    throw new Error('اسم الضيف لا يمكن أن يكون فارغاً');
   }
   return sanitized;
 }
@@ -131,7 +128,7 @@ function validateGuestName(name) {
 function validatePartyName(name) {
   const sanitized = sanitizeString(name, 100);
   if (!sanitized || sanitized.length < 1) {
-    throw new Error('Party name cannot be empty');
+    throw new Error('اسم الحفلة لا يمكن أن يكون فارغاً');
   }
   return sanitized;
 }
@@ -156,7 +153,7 @@ function isRateLimited(clientId) {
 }
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Add size limit
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public'));
 
 // Serve main page
@@ -169,20 +166,19 @@ app.post('/api/parties', async (req, res) => {
   try {
     const clientId = req.ip || req.connection.remoteAddress;
     if (isRateLimited(clientId)) {
-      return res.status(429).json({ error: 'Too many requests. Please wait a minute.' });
+      return res.status(429).json({ error: 'عدد كبير جداً من الطلبات. يرجى الانتظار دقيقة.' });
     }
 
     const { name, budget, criteria, guests } = req.body;
     
     if (!name || !guests || !Array.isArray(guests) || guests.length < 2) {
-      return res.status(400).json({ error: 'Party name and at least 2 guests are required' });
+      return res.status(400).json({ error: 'اسم الحفلة ووجود ضيفين على الأقل مطلوب' });
     }
 
     if (guests.length > 50) {
-      return res.status(400).json({ error: 'Maximum 50 guests allowed' });
+      return res.status(400).json({ error: 'الحد الأقصى للضيوف هو 50' });
     }
 
-    // Validate and sanitize inputs
     const sanitizedName = validatePartyName(name);
     const sanitizedBudget = sanitizeString(budget || '', 50);
     const sanitizedCriteria = sanitizeString(criteria || '', 500);
@@ -191,14 +187,13 @@ app.post('/api/parties', async (req, res) => {
       try {
         return validateGuestName(g);
       } catch (e) {
-        throw new Error(`Invalid guest name: ${g}`);
+        throw new Error(`اسم الضيف غير صالح: ${g}`);
       }
     });
     
-    // Check for duplicate guest names
     const uniqueGuests = [...new Set(sanitizedGuests)];
     if (uniqueGuests.length !== sanitizedGuests.length) {
-      return res.status(400).json({ error: 'Guest names must be unique' });
+      return res.status(400).json({ error: 'يجب أن تكون أسماء الضيوف فريدة' });
     }
 
     const partyId = uuidv4();
@@ -222,7 +217,6 @@ app.post('/api/parties', async (req, res) => {
 
     parties.set(partyId, party);
     
-    // Generate unique links for each guest
     const guestUrls = {};
     party.guests.forEach(guest => {
       const guestId = uuidv4();
@@ -241,8 +235,8 @@ app.post('/api/parties', async (req, res) => {
       party 
     });
   } catch (error) {
-    console.error('Error creating party:', error);
-    res.status(400).json({ error: error.message || 'Invalid request data' });
+    console.error('حدث خطأ أثناء إنشاء الحفلة:', error);
+    res.status(400).json({ error: error.message || 'بيانات الطلب غير صالحة' });
   }
 });
 
@@ -250,7 +244,7 @@ app.post('/api/parties', async (req, res) => {
 app.get('/api/parties/:id', (req, res) => {
   const party = parties.get(req.params.id);
   if (!party) {
-    return res.status(404).json({ error: 'Party not found' });
+    return res.status(404).json({ error: 'الحفلة غير موجودة' });
   }
   res.json(party);
 });
@@ -260,38 +254,36 @@ app.post('/api/parties/:id/assign', async (req, res) => {
   try {
     const clientId = req.ip || req.connection.remoteAddress;
     if (isRateLimited(clientId)) {
-      return res.status(429).json({ error: 'Too many requests. Please wait a minute.' });
+      return res.status(429).json({ error: 'عدد كبير جداً من الطلبات. يرجى الانتظار دقيقة.' });
     }
 
     const { guestName } = req.body;
     const partyId = req.params.id;
     
     if (!guestName || typeof guestName !== 'string') {
-      return res.status(400).json({ error: 'Guest name is required' });
+      return res.status(400).json({ error: 'اسم الضيف مطلوب' });
     }
 
     const sanitizedGuestName = sanitizeString(guestName, 50);
     if (!sanitizedGuestName) {
-      return res.status(400).json({ error: 'Invalid guest name' });
+      return res.status(400).json({ error: 'اسم الضيف غير صالح' });
     }
 
     const party = parties.get(partyId);
     
     if (!party) {
-      return res.status(404).json({ error: 'Party not found' });
+      return res.status(404).json({ error: 'الحفلة غير موجودة' });
     }
 
     if (!party.guests.includes(sanitizedGuestName)) {
-      return res.status(400).json({ error: 'Guest not found in party' });
+      return res.status(400).json({ error: 'الضيف غير موجود في الحفلة' });
     }
 
-    // Check if already assigned
     const existingAssignment = assignments.get(`${partyId}-${sanitizedGuestName}`);
     if (existingAssignment) {
       return res.json({ assignment: existingAssignment });
     }
 
-    // Get or create assignments for this party
     if (!assignments.has(partyId)) {
       const shuffled = [...party.guests];
       for (let i = shuffled.length - 1; i > 0; i--) {
@@ -299,7 +291,6 @@ app.post('/api/parties/:id/assign', async (req, res) => {
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
       }
       
-      // Ensure no one gets themselves
       for (let i = 0; i < shuffled.length; i++) {
         if (shuffled[i] === party.guests[i]) {
           if (i === shuffled.length - 1) {
@@ -325,8 +316,8 @@ app.post('/api/parties/:id/assign', async (req, res) => {
     
     res.json({ assignment });
   } catch (error) {
-    console.error('Error assigning Secret Santa:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('حدث خطأ أثناء التعيين:', error);
+    res.status(500).json({ error: 'حدث خطأ في الخادم' });
   }
 });
 
@@ -335,27 +326,26 @@ app.get('/api/guest/:id/assignment', async (req, res) => {
   try {
     const clientId = req.ip || req.connection.remoteAddress;
     if (isRateLimited(clientId)) {
-      return res.status(429).json({ error: 'Too many requests. Please wait a minute.' });
+      return res.status(429).json({ error: 'عدد كبير جداً من الطلبات. يرجى الانتظار دقيقة.' });
     }
 
     const guestId = req.params.id;
     
     if (!guestId || typeof guestId !== 'string' || guestId.length !== 36) {
-      return res.status(400).json({ error: 'Invalid guest ID' });
+      return res.status(400).json({ error: 'معرف الضيف غير صالح' });
     }
 
     const guestLink = guestLinks.get(guestId);
     
     if (!guestLink) {
-      return res.status(404).json({ error: 'Guest link not found' });
+      return res.status(404).json({ error: 'رابط الضيف غير موجود' });
     }
     
     const party = parties.get(guestLink.partyId);
     if (!party) {
-      return res.status(404).json({ error: 'Party not found' });
+      return res.status(404).json({ error: 'الحفلة غير موجودة' });
     }
     
-    // Get or create assignments for this party
     if (!assignments.has(guestLink.partyId)) {
       const shuffled = [...party.guests];
       for (let i = shuffled.length - 1; i > 0; i--) {
@@ -363,7 +353,6 @@ app.get('/api/guest/:id/assignment', async (req, res) => {
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
       }
       
-      // Ensure no one gets themselves
       for (let i = 0; i < shuffled.length; i++) {
         if (shuffled[i] === party.guests[i]) {
           if (i === shuffled.length - 1) {
@@ -396,8 +385,8 @@ app.get('/api/guest/:id/assignment', async (req, res) => {
       assignment 
     });
   } catch (error) {
-    console.error('Error getting guest assignment:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('حدث خطأ أثناء جلب التعيين:', error);
+    res.status(500).json({ error: 'حدث خطأ في الخادم' });
   }
 });
 
@@ -407,6 +396,6 @@ app.get('/guest/:id', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', async () => {
-  console.log(`Secret Santa app running on http://0.0.0.0:${PORT}`);
+  console.log(`تطبيق سِكريت سانتا يعمل على http://0.0.0.0:${PORT}`);
   await loadData();
 });
